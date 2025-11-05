@@ -5,15 +5,15 @@ class BpTreeNode {
 private:
 	BpTreeNode* pParent;
 	BpTreeNode* pMostLeftChild;
-
+protected:
+	bool isDataNode;
 public:
 	BpTreeNode() {
 		pParent = NULL;
 		pMostLeftChild = NULL;
+		isDataNode = false;
 	}
-	~BpTreeNode() {
-
-	}
+	~BpTreeNode() {}
 
 	void setMostLeftChild(BpTreeNode* pN) { pMostLeftChild = pN; }
 	void setParent(BpTreeNode* pN) { pParent = pN; }
@@ -32,5 +32,5 @@ public:
 
 	virtual map<string, BpTreeNode*>* getIndexMap() { return {}; }
 	virtual map<string, EmployeeData*>* getDataMap() { return {}; }
-
+	virtual bool is_DataNode() const = 0;
 };

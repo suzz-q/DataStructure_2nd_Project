@@ -2,6 +2,8 @@
 #include <iostream>
 #include <string>
 #include <map>
+#include <fstream>
+#include <algorithm>
 using namespace std;
 
 class EmployeeData {
@@ -12,7 +14,10 @@ private:
     int income;
 
 public:
-    EmployeeData() {};
+    EmployeeData() {
+        name = "";
+        dept_no, id, income = 0;
+    };
     ~EmployeeData() {};
 
     void setData(string name, int dept_no, int id, int income) {

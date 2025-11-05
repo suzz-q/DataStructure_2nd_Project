@@ -15,8 +15,11 @@ public:
 		pPrev = NULL;
 	}
 	~BpTreeDataNode() {
-
+		//auto iter = this->getDataMap()->begin();
+		
 	}
+
+	bool is_DataNode() const override { return true; }
 
 	void setNext(BpTreeNode* pN) { pNext = pN; }
 	void setPrev(BpTreeNode* pN) { pPrev = pN; }

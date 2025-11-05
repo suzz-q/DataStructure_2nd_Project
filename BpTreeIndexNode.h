@@ -11,11 +11,10 @@ private:
 
 public:
 	BpTreeIndexNode() {}
-	~BpTreeIndexNode() {
-
-	}
+	~BpTreeIndexNode() {}
 
 
+	bool is_DataNode() const override { return false; }
 	void insertIndexMap(string name, BpTreeNode* pN) {
 		mapIndex.insert(map<string, BpTreeNode*>::value_type(name, pN));
 	}

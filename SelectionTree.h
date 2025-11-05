@@ -8,8 +8,14 @@ private:
     SelectionTreeNode* run[8];
 
 public:
-    SelectionTree(ofstream* fout) {
-        
+    SelectionTree(ofstream* fout) 
+    {
+        this->fout = fout;
+        root = nullptr;
+        for (int i = 0; i < 8; i++)
+        {
+            run[i] = nullptr;
+        }
     }
 
     ~SelectionTree() {

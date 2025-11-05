@@ -2,7 +2,8 @@
 #include "SelectionTree.h"
 #include "BpTree.h"
 #include <fstream>
-
+#include <sstream>
+#include <algorithm>
 class Manager {
 private:
 	char* cmd;
@@ -11,7 +12,8 @@ private:
 
 public:
 	Manager(int bpOrder) {		//constructor
-		
+		bptree = new BpTree(bpOrder);
+		stree = nullptr;
 	}
 
 
@@ -24,10 +26,11 @@ public:
 
 	void run(const char* command);
 	void LOAD();
-	void ADD_BP();
+	void ADD_BP(string name, int dept_no, int ID, int income);
 	void SEARCH_BP_NAME(string name);
-	void SEARCH_BP_RANGE(string start, string end);
+	bool SEARCH_BP_RANGE(string start, string end);
 	void PRINT_BP();
+
 	void ADD_ST_DEPTNO(int dept_no);
 	void ADD_ST_NAME(string name);
 	void PRINT_ST();
