@@ -1,5 +1,5 @@
 #include "BpTree.h"
-
+#include <cmath>
 bool BpTree::Insert(EmployeeData* newData) {
 	if (root == nullptr) //트리가 비었을 때 
 	{
