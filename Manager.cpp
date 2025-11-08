@@ -9,53 +9,62 @@ void Manager::run(const char* command) {
 	fin.open(command);
 	flog.open("log.txt");
 
+	// Handle when the file cannot be opened
 	if (!fin)
 	{
 		flog << "Fail to open command file\n";
 		exit(-1);
 	}
-	if (fin.peek() == ifstream::traits_type::eof()) // exit if command.txt is empty
+
+	// Handle when the file is empty
+	if (fin.peek() == ifstream::traits_type::eof())
 		return;
 
 	string line;
+	// Read the file line by line and split by whitespace
 	while (getline(fin, line)) {
 		if (line.empty())
 			continue;
 
 		istringstream ss(line);
-		string cmd;
-		ss >> cmd;  // 명령어만 분리
 
-		if (cmd == "LOAD"){
-			LOAD();
+		string cmd;
+		ss >> cmd;  // Extract only the command
+
+		if (cmd == "LOAD")
+		{
+			LOAD(); // Read data from employee.txt and store it in the B+ tree
 		}
 		else if (cmd == "ADD_BP") {
 			string name;
 			int dept_no, ID, income;
 
-			ss >> name >> dept_no >> ID>>income;
+			ss >> name >> dept_no >> ID >> income;
 
-			//인자가 부족한 경우
+			// Handle insufficient arguments
 			if (ss.fail())
 			{
 				printErrorCode(200);
 				continue;
 			}
-			
-				ADD_BP(name, dept_no, ID, income);
-				flog << " ========ADD_BP=======\n";
-				flog << name << "/" 
-					<< dept_no << "/" 
-					<< ID << "/" 
-					<< income << "\n";
-				flog << " =======================\n\n";
-			
+
+			// Store directly in the B+ tree
+			ADD_BP(name, dept_no, ID, income);
+			// Output to file
+			flog << " ========ADD_BP=======\n";
+			flog << name << "/"
+				<< dept_no << "/"
+				<< ID << "/"
+				<< income << "\n";
+			flog << " =======================\n\n";
+
 		}
-		else if (cmd=="SEARCH_BP")
+		else if (cmd == "SEARCH_BP")
 		{
-			
-			//인자를 입력 x || B+ 트리에 데이터가 없는 경우 || 검색하는 이름의 사원이 없는 경우
+			// When arguments are missing || B+ tree has no data || no employee found by name
 			string parm[3];
+
+			// If the first argument is missing: print error code
 			ss >> parm[0];
 			if (parm[0].empty())
 			{
@@ -63,8 +72,8 @@ void Manager::run(const char* command) {
 			}
 
 			ss >> parm[1];
-
-			//이름 기준 검색
+			// If the second argument (parm[1]) is empty → search by name; otherwise, search by range
+			// Search by name
 			if (parm[1].empty())
 			{
 				SEARCH_BP_NAME(parm[0]);
@@ -73,18 +82,49 @@ void Manager::run(const char* command) {
 			{
 				printErrorCode(300);
 			}
-			
+
 		}
-		else if (cmd== "ADD_ST") {
+		else if (cmd == "ADD_ST") {
 			string type, value;
 			ss >> type >> value;
+
+			if (type.empty() || value.empty())
+			{
+				printErrorCode(500);
+				continue;
+			}
+
 			if (type == "dept_no")
 			{
-				int dept_no = stoi(value);
-				ADD_ST_DEPTNO(dept_no);
+				try {
+					int dept_no = stoi(value);
+
+					// Check if it is a valid department code
+					if (dept_no < 100 || dept_no > 800 || dept_no % 100 != 0)
+					{
+						printErrorCode(500);
+						continue;
+					}
+
+					ADD_ST_DEPTNO(dept_no);
+				}
+				catch (std::invalid_argument&) {
+					// When value is not a number
+					printErrorCode(500);
+					continue;
+				}
+				catch (std::out_of_range&) {
+					// When the number is too large
+					printErrorCode(500);
+					continue;
+				}
 			}
 			else if (type == "name")
 			{
+				if (value.empty()) {
+					printErrorCode(500);
+					continue;
+				}
 				ADD_ST_NAME(value);
 			}
 			else
@@ -92,9 +132,10 @@ void Manager::run(const char* command) {
 				printErrorCode(500);
 			}
 		}
-		else if (cmd=="PRINT_ST") {
+		else if (cmd == "PRINT_ST") {
 			int dept_no;
 
+			// Extract department number
 			ss >> dept_no;
 
 			if (!stree)
@@ -106,18 +147,10 @@ void Manager::run(const char* command) {
 			{
 				printErrorCode(600);
 			}
-			
-			
+
 		}
 		else if (cmd == "PRINT_BP") {
-			if (bptree->getRoot() == nullptr) //저장된 데이터가 없는 경우
-			{
-				printErrorCode(400);
-			}
-			else 
-			{
-				bptree->PrintAllData(flog);
-			}
+			PRINT_BP();
 		}
 		else if (cmd == "DELETE") {
 			if (!stree || !stree->Delete())
@@ -126,7 +159,7 @@ void Manager::run(const char* command) {
 				printSuccessCode("DELETE");
 		}
 		else if (cmd == "EXIT") {
-			
+
 			printSuccessCode("EXIT");
 			return;
 		}
@@ -135,23 +168,26 @@ void Manager::run(const char* command) {
 	}
 }
 
-void Manager::LOAD() {
+void Manager::LOAD()
+{
+	// Open employee data file
 	ifstream fdata;
 	fdata.open("employee.txt");
 	if (fdata.is_open() && bptree->getRoot() == nullptr)
 	{
-		if (fdata.peek() == ifstream::traits_type::eof()) { // If the first character of the file is eof, the file is empty
+		if (fdata.peek() == ifstream::traits_type::eof()) { // If the first character of the file is EOF, the file is empty
 			printErrorCode(100);
 			return;
 		}
 
 		string empName;
-		int dept_no,	//부서 코드
-			ID,			//사번
-			annual_income;	//da
+		int dept_no,	// Department code
+			ID,			// Employee ID
+			annual_income;	// Annual income
 		while (fdata >> empName >> dept_no >> ID >> annual_income)
 		{
-			EmployeeData* empData = new EmployeeData; //creat a new object
+			// Create a new object
+			EmployeeData* empData = new EmployeeData;
 			empData->setName(empName);
 			empData->setDeptNo(dept_no);
 			empData->setID(ID);
@@ -164,18 +200,18 @@ void Manager::LOAD() {
 	{
 		printErrorCode(100);
 	}
-	
-
 }
 
-void Manager::ADD_BP(string name, int dept_no, int ID, int income) 
+void Manager::ADD_BP(string name, int dept_no, int ID, int income)
 {
 	BpTreeNode* foundNode = bptree->searchDataNode(name);
 	bool exists = false;
 
-
-	if (foundNode) {
-		for (auto& data : *foundNode->getDataMap()) {
+	if (foundNode)
+	{
+		// Iterate through all employee data stored in the found B+ tree node
+		for (auto& data : *foundNode->getDataMap())
+		{
 			if (data.first == name) {
 				exists = true;
 				break;
@@ -184,10 +220,11 @@ void Manager::ADD_BP(string name, int dept_no, int ID, int income)
 	}
 
 	if (exists) {
-		printErrorCode(200); // 중복
+		printErrorCode(200); // Duplicate
 		return;
 	}
-	
+
+	// Create and insert new data
 	EmployeeData* empData = new EmployeeData;
 	empData->setName(name);
 	empData->setDeptNo(dept_no);
@@ -196,20 +233,30 @@ void Manager::ADD_BP(string name, int dept_no, int ID, int income)
 	bptree->Insert(empData);
 }
 
-void Manager::SEARCH_BP_NAME(string name) {
+void Manager::SEARCH_BP_NAME(string name)
+{
+	// If B+ tree object does not exist or contains no data
 	if (!bptree || !bptree->getRoot()) {
 		printErrorCode(300);
 		return;
 	}
 
+	// Get search result by name
 	BpTreeNode* node = bptree->searchDataNode(name);
-	if (!node) {
+	if (!node)
+	{
 		printErrorCode(300);
 		return;
 	}
+
 	bool found = false;
-	for (auto& iter : *node->getDataMap()) {
-		if (iter.first == name) {
+
+	// Iterate through all data in the node
+	for (auto& iter : *node->getDataMap())
+	{
+		// If match found
+		if (iter.first == name)
+		{
 			flog << "========SEARCH_BP========\n";
 			flog << iter.second->getName() << "/"
 				<< iter.second->getDeptNo() << "/"
@@ -225,37 +272,36 @@ void Manager::SEARCH_BP_NAME(string name) {
 		printErrorCode(300);
 }
 
-bool Manager::SEARCH_BP_RANGE(string start, string end) 
+bool Manager::SEARCH_BP_RANGE(string start, string end)
 {
-	if (bptree->getRoot() == nullptr)
+	// When bptree object is null or contains no data
+	if (!bptree || bptree->getRoot() == nullptr)
 	{
 		return false;
 	}
 	return bptree->searchRange(start, end, flog);
-	
-
 }
 
-void Manager::ADD_ST_DEPTNO(int dept_no) 
+void Manager::ADD_ST_DEPTNO(int dept_no)
 {
-	if(!bptree || !bptree->getRoot()) 
+	// When bptree object is null or contains no data
+	if (!bptree || !bptree->getRoot())
 	{
 		printErrorCode(500);
 		return;
 	}
 
-	// Selection Tree 생성
+	// Create Selection Tree
 	if (!stree) {
 		stree = new SelectionTree(&flog);
 	}
 
 	stree->setTree();
 
-
-	//왼쪽부터 탐색
+	// Traverse from the leftmost leaf
 	BpTreeNode* node = bptree->getRoot();
 
-	while (node && node->getMostLeftChild()) node = node->getMostLeftChild(); // leaf 도달
+	while (node && node->getMostLeftChild()) node = node->getMostLeftChild(); // Reach the leaf
 
 	bool inserted = false;
 
@@ -267,30 +313,30 @@ void Manager::ADD_ST_DEPTNO(int dept_no)
 				inserted = true;
 			}
 		}
-		node = node->getNext(); // 다음 leaf 노드로
+		node = node->getNext(); // Move to the next leaf node
 	}
 	if (!inserted)
-		printErrorCode(500); // 해당 부서 직원 없음
+		printErrorCode(500); // No employees in the department
 	else
 		printSuccessCode("ADD_ST");
-
 }
 
-void Manager::ADD_ST_NAME(string name) 
+void Manager::ADD_ST_NAME(string name)
 {
-	//B+ 트리가 비었는지 확인
+	// Check if B+ tree is empty
 	if (!bptree || !bptree->getRoot()) {
 		printErrorCode(500);
 		return;
 	}
 
 	BpTreeNode* addNode = bptree->searchDataNode(name);
-	if (!addNode) { // 해당 이름의 노드가 없는 경우
+	if (!addNode)
+	{ // If no node with the given name exists
 		printErrorCode(500);
 		return;
 	}
 
-	//이름이 일치하는 사원 찾기 
+	// Find employee with matching name
 	EmployeeData* foundData = nullptr;
 	for (auto& kv : *addNode->getDataMap()) {
 		if (kv.second->getName() == name) {
@@ -300,17 +346,17 @@ void Manager::ADD_ST_NAME(string name)
 	}
 
 	if (!foundData) {
-		printErrorCode(500); // 이름 존재하지 않음
+		printErrorCode(500); // Name not found
 		return;
 	}
 
-	//Selection Tree 초기화 
+	// Initialize Selection Tree
 	if (!stree) {
 		stree = new SelectionTree(&flog);
 		stree->setTree();
 	}
 
-	//Selection Tree에 삽입
+	// Insert into Selection Tree
 	if (!stree->Insert(foundData)) {
 		printErrorCode(500);
 		return;
@@ -319,35 +365,38 @@ void Manager::ADD_ST_NAME(string name)
 	printSuccessCode("ADD_ST");
 }
 
-void Manager::PRINT_BP() 
+void Manager::PRINT_BP()
 {
-	if (bptree->getRoot() == nullptr)	//B+트리에 저장된 데이터가 없는 경우
+	// When bptree object is null or contains no data
+	if (!bptree || bptree->getRoot() == nullptr)
 	{
 		printErrorCode(400);
 		return;
 	}
-
-	//bptree->searchRange("a", "z"); 
+	else
+	{
+		bptree->PrintAllData(flog);
+	}
 }
 
 void Manager::PRINT_ST() {
 	int dept_no;
 
-	// 파일에서 부서 번호 읽기
+	// Read department number from file
 	if (!(fin >> dept_no)) {
-		printErrorCode(600); // 인자 없음
+		printErrorCode(600); // Missing argument
 		return;
 	}
 
-	// Selection Tree가 생성되어 있는지 확인
+	// Check if Selection Tree exists
 	if (!stree) {
 		printErrorCode(600);
 		return;
 	}
 
-	// 실제 출력
+	// Actual output
 	if (!stree->printEmployeeData(dept_no)) {
-		printErrorCode(600); // 해당 부서 없음
+		printErrorCode(600); // Department not found
 	}
 	else {
 		printSuccessCode("PRINT_ST");
@@ -360,9 +409,9 @@ void Manager::DELETE() {
 		return;
 	}
 
-	// 삭제 시도
+	// Delete 
 	if (!stree->Delete()) {
-		printErrorCode(700); // Tree가 비었거나 삭제 불가
+		printErrorCode(700); // Tree is empty or cannot delete
 	}
 	else {
 		printSuccessCode("DELETE");

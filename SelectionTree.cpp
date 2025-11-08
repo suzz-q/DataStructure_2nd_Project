@@ -1,21 +1,22 @@
 #include "SelectionTree.h"
 #include <cmath>
 
-void SelectionTree::setTree() 
+void SelectionTree::setTree()
 {
-    //run=8이므로 level이 3인 full Binary Tree를 초기화 해야함 
-    
+    // run = 8 → 8 departments (100~800)
+    // Create a full binary tree with level = 3
+
     for (int i = 0; i < 8; i++)
     {
         run[i] = new SelectionTreeNode;
-        run[i]->HeapInit(); // EmployeeHeap 생성
+        run[i]->HeapInit(); // Initialize EmployeeHeap for each leaf (department)
     }
 
-    //트리 생성
+    // Second level (level2): create 4 internal nodes to group leaves
     SelectionTreeNode* level2[4];
     SelectionTreeNode* level1[2];
 
-    //연결
+    // Connect leaf (8 nodes) → level2 (4 nodes)
     for (int i = 0; i < 4; i++)
     {
         level2[i] = new SelectionTreeNode;
@@ -25,7 +26,7 @@ void SelectionTree::setTree()
         run[i * 2 + 1]->setParent(level2[i]);
     }
 
-    // 중간 노드 연결
+    // Connect level2 (4 nodes) → level1 (2 nodes)
     for (int i = 0; i < 2; i++)
     {
         level1[i] = new SelectionTreeNode;
@@ -35,6 +36,7 @@ void SelectionTree::setTree()
         level2[i * 2 + 1]->setParent(level1[i]);
     }
 
+    // Connect the root node (level1 has two children)
     root = new SelectionTreeNode;
     root->setLeftChild(level1[0]);
     root->setRightChild(level1[1]);
@@ -42,25 +44,26 @@ void SelectionTree::setTree()
     level1[1]->setParent(root);
 }
 
-bool SelectionTree::Insert(EmployeeData* newData) 
+bool SelectionTree::Insert(EmployeeData* newData)
 {
     if (!newData)
-    {
         return false;
-    }
 
-    int index = (newData->getDeptNo() / 100) - 1; // 100→0, 200→1, ...
+    // Convert department number (100~800) to index (0~7)
+    int index = (newData->getDeptNo() / 100) - 1;
     if (index < 0 || index >= 8)
         return false;
 
     SelectionTreeNode* leaf = run[index];
     if (!leaf->getHeap())
-        leaf->HeapInit();
+        leaf->HeapInit(); // Initialize department heap (if necessary)
 
+    // Insert employee into the department heap
     leaf->getHeap()->Insert(newData);
     if (leaf->getHeap())
-        leaf->setEmployeeData(leaf->getHeap()->Top());
+        leaf->setEmployeeData(leaf->getHeap()->Top()); // Store the highest-paid employee in the node
 
+    // Move upward toward the parent and update the Selection Tree by comparing nodes
     SelectionTreeNode* node = leaf;
     while (node->getParent())
     {
@@ -71,6 +74,7 @@ bool SelectionTree::Insert(EmployeeData* newData)
         EmployeeData* leftData = (left) ? left->getEmployeeData() : nullptr;
         EmployeeData* rightData = (right) ? right->getEmployeeData() : nullptr;
 
+        // Set the higher-paid employee among two children as the parent node data
         if (leftData == nullptr && rightData == nullptr)
             parent->setEmployeeData(nullptr);
         else if (rightData == nullptr || (leftData && leftData->getIncome() >= rightData->getIncome()))
@@ -78,31 +82,32 @@ bool SelectionTree::Insert(EmployeeData* newData)
         else
             parent->setEmployeeData(rightData);
 
-        node = parent;
+        node = parent; // Move upward
     }
 
     return true;
-
 }
 
 bool SelectionTree::Delete() {
+    // When the tree is empty or the root has no data
     if (!root || !root->getEmployeeData())
         return false;
 
+    // Store the highest-paid employee in the root as target
     EmployeeData* target = root->getEmployeeData();
-    int index = (target->getDeptNo() / 100) - 1;
+    int index = (target->getDeptNo() / 100) - 1; // Move to corresponding department
 
     SelectionTreeNode* leaf = run[index];
     if (!leaf->getHeap() || leaf->getHeap()->IsEmpty())
         return false;
 
-    // Heap에서 root 삭제
+    // Delete the root (highest-paid employee) from the heap
     leaf->getHeap()->Delete();
 
-    // leaf 데이터 갱신
+    // Update leaf data after deletion (new highest-paid employee)
     leaf->setEmployeeData(leaf->getHeap()->Top());
 
-    // 위로 올라가며 SelectionTree 재정렬
+    // Reorder upward to the root to maintain SelectionTree structure
     SelectionTreeNode* node = leaf;
     while (node->getParent())
     {
@@ -113,6 +118,7 @@ bool SelectionTree::Delete() {
         EmployeeData* leftData = (left) ? left->getEmployeeData() : nullptr;
         EmployeeData* rightData = (right) ? right->getEmployeeData() : nullptr;
 
+        // Set the parent data to the higher-paid employee among two children
         if (leftData == nullptr && rightData == nullptr)
             parent->setEmployeeData(nullptr);
         else if (rightData == nullptr || (leftData && leftData->getIncome() >= rightData->getIncome()))
@@ -135,21 +141,32 @@ bool SelectionTree::printEmployeeData(int dept_no) {
     if (!leaf->getHeap() || leaf->getHeap()->IsEmpty())
         return false;
 
-    EmployeeHeap* heap = leaf->getHeap();
+    EmployeeHeap* original = leaf->getHeap();
+
+    // Keep the original heap unchanged and use a copied heap for output
+    EmployeeHeap tempHeap;
+
+    // Copy all data from the original heap (preserving income order)
+    for (int i = 1; i <= original->getSize(); i++) {
+        EmployeeData* data = original->getHeapArr()[i];
+        if (data)
+            tempHeap.Insert(data);
+    }
 
     (*fout) << "========PRINT_ST========\n";
-    for (int i = 1; i <= heap->getSize(); i++)
-    {
-        EmployeeData* e = heap->getHeapArr()[i];
-        if (e)
-        {
+
+    // Extract one by one from the copied heap and print (descending by income)
+    while (!tempHeap.IsEmpty()) {
+        EmployeeData* e = tempHeap.Top();  // Highest-paid employee
+        if (e) {
             (*fout) << e->getName() << "/"
                 << e->getDeptNo() << "/"
                 << e->getID() << "/"
                 << e->getIncome() << "\n";
         }
+        tempHeap.Delete(); // Remove after printing (move to next)
     }
-    (*fout) << "=======================\n\n";
 
+    (*fout) << "=======================\n\n";
     return true;
 }
