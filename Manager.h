@@ -33,7 +33,7 @@ public:
 
 	void ADD_ST_DEPTNO(int dept_no);
 	void ADD_ST_NAME(string name);
-	void PRINT_ST();
+	void PRINT_ST(int dept_no);
 	void DELETE();
 
 	void printErrorCode(int n);

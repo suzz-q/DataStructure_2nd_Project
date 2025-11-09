@@ -69,9 +69,11 @@ void Manager::run(const char* command) {
 			if (parm[0].empty())
 			{
 				printErrorCode(300);
+				continue;
 			}
 
 			ss >> parm[1];
+
 			// If the second argument (parm[1]) is empty ¡æ search by name; otherwise, search by range
 			// Search by name
 			if (parm[1].empty())
@@ -136,11 +138,16 @@ void Manager::run(const char* command) {
 			int dept_no;
 
 			// Extract department number
-			ss >> dept_no;
+			if (!(ss >> dept_no)) 
+			{ 
+				printErrorCode(600);
+				continue;
+			}
 
 			if (!stree)
 			{
 				printErrorCode(600);
+				continue;
 			}
 
 			if (!stree->printEmployeeData(dept_no))
@@ -220,7 +227,7 @@ void Manager::ADD_BP(string name, int dept_no, int ID, int income)
 	}
 
 	if (exists) {
-		printErrorCode(200); // Duplicate
+		
 		return;
 	}
 
@@ -379,28 +386,14 @@ void Manager::PRINT_BP()
 	}
 }
 
-void Manager::PRINT_ST() {
-	int dept_no;
-
-	// Read department number from file
-	if (!(fin >> dept_no)) {
-		printErrorCode(600); // Missing argument
-		return;
-	}
-
-	// Check if Selection Tree exists
+void Manager::PRINT_ST(int dept_no) {
 	if (!stree) {
 		printErrorCode(600);
 		return;
 	}
 
-	// Actual output
-	if (!stree->printEmployeeData(dept_no)) {
-		printErrorCode(600); // Department not found
-	}
-	else {
-		printSuccessCode("PRINT_ST");
-	}
+	if (!stree->printEmployeeData(dept_no))
+		printErrorCode(600);
 }
 
 void Manager::DELETE() {
